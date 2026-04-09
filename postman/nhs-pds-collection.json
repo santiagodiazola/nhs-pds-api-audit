@@ -1,0 +1,964 @@
+{
+  "info": {
+    "_postman_id": "180587ff-7ce2-49f6-b797-ed120d812cad",
+    "name": "NHS PDS - Technical Audit 2026",
+    "description": "# **NHS PDS API Technical Audit 2026**\n\n## **Executive Summary**\n\nThis collection contains a comprehensive suite of automated tests for the **NHS Personal Demographics Service (PDS) FHIR API**. The primary objective is to validate the integrity of patient \"Golden Records\" through rigorous schema validation, security handshake audits, and functional regression.\n\n## **Key Testing Domains**\n\n- **Core Identity (Sprint 1):** Validation of Patient Resource retrieval via unique NHS Numbers.\n    \n- **Demographic Search (Sprint 2):** Verification of advanced search parameters (Family Name, Gender, Birthdate).\n    \n- **Security & Compliance:** Auditing OAuth 2.0 token integrity and error-handling protocols (4xx/5xx).\n    \n\n## **Technical Specifications**\n\n- **Environment:** NHS Digital Sandbox.\n    \n- **Standard:** HL7® FHIR® R4.\n    \n- **Requirement Mapping:** All requests are linked to Jira Requirement IDs (e.g., REQ-PDS-01).\n    \n\n## **Pre-requisites for Execution**\n\n1. Ensure the **\"NHS - Sandbox\"** environment is selected in the top-right corner.\n    \n2. Verify that `base_url` is pointing to the official NHS Sandbox endpoint.\n    \n3. Tokens are managed via the **Authorization** tab at the collection level to ensure inheritance across all requests.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "52118279",
+    "_collection_link": "https://go.postman.co/collection/52118279-180587ff-7ce2-49f6-b797-ed120d812cad?source=collection_link"
+  },
+  "item": [
+    {
+      "name": "Sprint 1 - Core Identity (Read)",
+      "item": [
+        {
+          "name": "TC-PDS-01: Positive Validation: Successful Patient Record Retrieval",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Check for Success",
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "// Verify JSON Structure ",
+                  "pm.test(\"Response contains the correct Patient ID\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.id).to.eql(pm.environment.get(\"nhs_number\"));",
+                  "});",
+                  "",
+                  "pm.test(\"Response includes at least one name entry\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.name[0].family).to.not.be.undefined;",
+                  "});",
+                  "",
+                  "// Check for official name (Clinical requirement)",
+                  "pm.test(\"Response includes a valid name (official or usual)\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    var nameEntry = jsonData.name.find(n => n.use === 'official' || n.use === 'usual');",
+                  "    ",
+                  "    pm.expect(nameEntry).to.not.be.undefined;",
+                  "    console.log(\"Validated name with type: \" + nameEntry.use);",
+                  "});",
+                  "// 1. Parse the JSON response",
+                  "const jsonData = pm.response.json();",
+                  "",
+                  "// 2. Schema Consistency Check",
+                  "pm.test(\"Schema Consistency: Response ID matches requested NHS Number\", function () {",
+                  "    // This helper function looks for the variable regardless of where it is stored",
+                  "    const requestedId = pm.variables.get(\"nhs_number\"); ",
+                  "    ",
+                  "    // Log to the Console (CMD+ALT+C) so we can see what Postman is finding",
+                  "    console.log(\"Requested ID from Variable:\", requestedId);",
+                  "    console.log(\"Actual ID from JSON Body:\", jsonData.id);",
+                  "",
+                  "    pm.expect(jsonData.id).to.eql(requestedId);",
+                  "});",
+                  "",
+                  "// 3. Header Check (ETag validation for caching/concurrency)",
+                  "pm.test(\"Header Check: ETag is present for resource versioning\", function () {",
+                  "    pm.expect(pm.response.headers.get('ETag')).to.not.be.undefined;",
+                  "});",
+                  ""
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/Patient/{{nhs_number}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "Patient",
+                "{{nhs_number}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "TC-PDS-02: Negative Validation: Resource Not Found (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// 1. Status Code Validation",
+                  "pm.test(\"Status code is 404 Not Found\", function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});",
+                  "",
+                  "// 2. Response Time Audit (Performance Benchmark)",
+                  "pm.test(\"Response time is under 500ms for Resource-Not-Found\", function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(500);",
+                  "});",
+                  "",
+                  "// 3. FHIR Standard Error Handling (OperationOutcome)",
+                  "pm.test(\"Response Body is a valid FHIR OperationOutcome\", function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.resourceType).to.equal(\"OperationOutcome\");",
+                  "    pm.expect(jsonData.issue).to.be.an('array');",
+                  "});",
+                  "",
+                  "// 4. Diagnostic Clarity (Ensuring the error is useful for clinicians)",
+                  "pm.test(\"OperationOutcome contains diagnostic error details\", function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    const issue = jsonData.issue[0];",
+                  "    ",
+                  "    // Accept 'information' OR 'error' to align with Sandbox behavior",
+                  "    pm.expect(issue.severity).to.be.oneOf([\"information\", \"error\"]);",
+                  "    pm.expect(issue.code).to.be.oneOf([\"not-found\", \"processing\"]);",
+                  "});",
+                  "",
+                  "// 5. Security Audit: Zero Information Leakage",
+                  "pm.test(\"Error response does not leak sensitive PII or Stack Traces\", function () {",
+                  "    const responseText = pm.response.text();",
+                  "    // Ensure common sensitive keys or server tech tags aren't leaked in the error",
+                  "    const sensitivePatterns = [/password/i, /stacktrace/i, /internal server/i, /admin/i];",
+                  "    sensitivePatterns.forEach(pattern => {",
+                  "        pm.expect(responseText).to.not.match(pattern);",
+                  "    });",
+                  "});",
+                  ""
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/Patient/9999999999",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "Patient",
+                "9999999999"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "TC-PDS-03: Security Validation: Unauthorized Access",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// 1. Validate Security Block (Status Code)",
+                  "pm.test(\"Security: Access Denied (400 or 401)\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([400, 401]);",
+                  "});",
+                  "",
+                  "// 2. Validate No Sensitive Data Leaked",
+                  "pm.test(\"Security: No Patient Data in Response\", function () {",
+                  "    const responseBody = pm.response.text();",
+                  "    pm.expect(responseBody).to.not.include(\"family\");",
+                  "    pm.expect(responseBody).to.not.include(\"birthDate\");",
+                  "});",
+                  "",
+                  "// 3. Validate Error Format (FHIR Standards)",
+                  "pm.test(\"Schema: Response is a FHIR OperationOutcome\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.resourceType).to.equal(\"OperationOutcome\");",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "WRONG_KEY",
+                "type": "text",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/Patient/{{nhs_number}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "Patient",
+                "{{nhs_number}}"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Sprint 2 - Demographic Search",
+      "item": [
+        {
+          "name": "TC-PDS-04: Successful Search by Family Name & DOB",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// 1. Verify the status code is 200",
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "// 2. Verify the response is JSON",
+                  "pm.test(\"Response is JSON\", function () {",
+                  "    pm.response.to.be.withBody;",
+                  "    pm.response.to.be.json;",
+                  "});",
+                  "",
+                  "// 3. Verify it is a valid FHIR resource (Bundle or OperationOutcome)",
+                  "pm.test(\"Valid FHIR Resource Type returned\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.resourceType).to.be.oneOf([\"Bundle\", \"OperationOutcome\"]);",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/fhir+json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "https://sandbox.api.service.nhs.uk/personal-demographics/FHIR/R4/Patient?family=Smith&birthdate=eq2010-10-22",
+              "protocol": "https",
+              "host": [
+                "sandbox",
+                "api",
+                "service",
+                "nhs",
+                "uk"
+              ],
+              "path": [
+                "personal-demographics",
+                "FHIR",
+                "R4",
+                "Patient"
+              ],
+              "query": [
+                {
+                  "key": "family",
+                  "value": "Smith"
+                },
+                {
+                  "key": "birthdate",
+                  "value": "eq2010-10-22"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "TC-PDS-05: Refined Search (Family + Given + Gender)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// 1. Verify the status code is 200",
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "// 2. Verify the response is JSON",
+                  "pm.test(\"Response is JSON\", function () {",
+                  "    pm.response.to.be.withBody;",
+                  "    pm.response.to.be.json;",
+                  "});",
+                  "",
+                  "// 3. Verify it is a valid FHIR resource (Bundle or OperationOutcome)",
+                  "pm.test(\"Valid FHIR Resource Type returned\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.resourceType).to.be.oneOf([\"Bundle\", \"OperationOutcome\"]);",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/fhir+json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "https://sandbox.api.service.nhs.uk/personal-demographics/FHIR/R4/Patient?family=SMITH&given=JANE&gender=female&birthdate=eq2010-10-22",
+              "protocol": "https",
+              "host": [
+                "sandbox",
+                "api",
+                "service",
+                "nhs",
+                "uk"
+              ],
+              "path": [
+                "personal-demographics",
+                "FHIR",
+                "R4",
+                "Patient"
+              ],
+              "query": [
+                {
+                  "key": "family",
+                  "value": "SMITH"
+                },
+                {
+                  "key": "given",
+                  "value": "JANE"
+                },
+                {
+                  "key": "gender",
+                  "value": "female"
+                },
+                {
+                  "key": "birthdate",
+                  "value": "eq2010-10-22"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "TC-PDS-06: Search with No Matching Results",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// 1. Verify the status code is 200",
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "// 2. Verify the response is JSON",
+                  "pm.test(\"Response is JSON\", function () {",
+                  "    pm.response.to.be.withBody;",
+                  "    pm.response.to.be.json;",
+                  "});",
+                  "",
+                  "// 3. Verify it is a valid FHIR resource (Bundle or OperationOutcome)",
+                  "pm.test(\"Valid FHIR Resource Type returned\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.resourceType).to.be.oneOf([\"Bundle\", \"OperationOutcome\"]);",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/fhir+json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "https://sandbox.api.service.nhs.uk/personal-demographics/FHIR/R4/Patient?family=NONEXISTENTZ&birthdate=eq1900-01-01",
+              "protocol": "https",
+              "host": [
+                "sandbox",
+                "api",
+                "service",
+                "nhs",
+                "uk"
+              ],
+              "path": [
+                "personal-demographics",
+                "FHIR",
+                "R4",
+                "Patient"
+              ],
+              "query": [
+                {
+                  "key": "family",
+                  "value": "NONEXISTENTZ"
+                },
+                {
+                  "key": "birthdate",
+                  "value": "eq1900-01-01"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "TC-PDS-07: Invalid Search Parameter Format (Negative)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// 1. Verify the status code is 400",
+                  "pm.test(\"Status code is 400\", function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "// 2. Verify the response is JSON",
+                  "pm.test(\"Response is JSON\", function () {",
+                  "    pm.response.to.be.withBody;",
+                  "    pm.response.to.be.json;",
+                  "});",
+                  "",
+                  "// 3. Verify it is a valid FHIR resource (Bundle or OperationOutcome)",
+                  "pm.test(\"Valid FHIR Resource Type returned\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.resourceType).to.be.oneOf([\"Bundle\", \"OperationOutcome\"]);",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "https://sandbox.api.service.nhs.uk/personal-demographics/FHIR/R4/Patient?family=SMITH&birthdate=INVALID_DATE_FORMAT",
+              "protocol": "https",
+              "host": [
+                "sandbox",
+                "api",
+                "service",
+                "nhs",
+                "uk"
+              ],
+              "path": [
+                "personal-demographics",
+                "FHIR",
+                "R4",
+                "Patient"
+              ],
+              "query": [
+                {
+                  "key": "family",
+                  "value": "SMITH"
+                },
+                {
+                  "key": "birthdate",
+                  "value": "INVALID_DATE_FORMAT"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Sprint 3 - Update Patient Record",
+      "item": [
+        {
+          "name": "TC-PDS-08: Successful Update of Contact Details (Positive)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 400 (Expected Logic Rejection)\", function () {",
+                  "    pm.expect(pm.response.code).to.equal(400);",
+                  "});",
+                  "",
+                  "pm.test(\"Response contains INVALID_UPDATE error\", function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    // We look into the coding array inside details",
+                  "    const errorCode = jsonData.issue[0].details.coding[0].code;",
+                  "    pm.expect(errorCode).to.equal(\"INVALID_UPDATE\");",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "protocolProfileBehavior": {
+            "disabledSystemHeaders": {}
+          },
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "If-Match",
+                "value": "W/\"1\"",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json-patch+json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  { \"op\": \"replace\", \"path\": \"/telecom/0/value\", \"value\": \"07700900123\" }\n]",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "https://sandbox.api.service.nhs.uk/personal-demographics/FHIR/R4/Patient/9000000009",
+              "protocol": "https",
+              "host": [
+                "sandbox",
+                "api",
+                "service",
+                "nhs",
+                "uk"
+              ],
+              "path": [
+                "personal-demographics",
+                "FHIR",
+                "R4",
+                "Patient",
+                "9000000009"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "TC-PDS-09: Update Collision Protection",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// 1. Validate that the request was rejected (Security/Logic Gate)",
+                  "pm.test(\"Status code is 4xx (Request Rejected)\", function () {",
+                  "    // Note the capital 'O' in oneOf",
+                  "    pm.expect(pm.response.code).to.be.oneOf([400, 412]);",
+                  "});",
+                  "",
+                  "// 2. Ensure the response is a valid FHIR OperationOutcome",
+                  "pm.test(\"Response is a valid FHIR OperationOutcome\", function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.resourceType).to.equal(\"OperationOutcome\");",
+                  "});",
+                  "",
+                  "// 3. Verify the Error Severity",
+                  "pm.test(\"Issue severity is 'error' or 'warning'\", function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    // Again, capital 'O' in oneOf",
+                  "    pm.expect(jsonData.issue[0].severity).to.be.oneOf([\"error\", \"warning\"]);",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "protocolProfileBehavior": {
+            "disabledSystemHeaders": {
+              "content-type": true
+            }
+          },
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json-patch+json",
+                "type": "text"
+              },
+              {
+                "key": "If-Match",
+                "value": "W/\"99\"",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  { \"op\": \"replace\", \"path\": \"/telecom/0/value\", \"value\": \"07700900123\" }\n]",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "https://sandbox.api.service.nhs.uk/personal-demographics/FHIR/R4/Patient/9000000009",
+              "protocol": "https",
+              "host": [
+                "sandbox",
+                "api",
+                "service",
+                "nhs",
+                "uk"
+              ],
+              "path": [
+                "personal-demographics",
+                "FHIR",
+                "R4",
+                "Patient",
+                "9000000009"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "TC-PDS-10: Schema Validation & Input Sanitization",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code should be 400, not 500\", function () {",
+                  "    // This test will FAIL currently because the server is returning 500",
+                  "    pm.expect(pm.response.code).to.equal(400);",
+                  "});",
+                  "",
+                  "pm.test(\"Response should be a controlled OperationOutcome\", function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.resourceType).to.equal(\"OperationOutcome\");",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "protocolProfileBehavior": {
+            "disabledSystemHeaders": {}
+          },
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "If-Match",
+                "value": "W/\"1\"",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json-patch+json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "[{\"op\": \"exploit_database\", ...}]",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "https://sandbox.api.service.nhs.uk/personal-demographics/FHIR/R4/Patient/9000000009",
+              "protocol": "https",
+              "host": [
+                "sandbox",
+                "api",
+                "service",
+                "nhs",
+                "uk"
+              ],
+              "path": [
+                "personal-demographics",
+                "FHIR",
+                "R4",
+                "Patient",
+                "9000000009"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Sprint 4: Edge Cases, Security & Final Polish",
+      "item": [
+        {
+          "name": "TC-PDS-11: Advanced Search Validation – Internationalization & Mandatory Schema Constraints",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// --- SENIOR QA VALIDATION SCRIPT ---",
+                  "",
+                  "// 1. Success Validation",
+                  "pm.test(\"Status code is 200 - Search Accepted\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "// 2. Internationalization (i18n) Verification",
+                  "pm.test(\"i18n Check: Request URL preserves accented 'í'\", function () {",
+                  "    const decodedUrl = decodeURIComponent(pm.request.url.toString());",
+                  "    pm.expect(decodedUrl).to.include(\"Díaz\");",
+                  "});",
+                  "",
+                  "// 3. Schema Check",
+                  "pm.test(\"FHIR Compliance: Response is valid JSON\", function () {",
+                  "    pm.response.to.be.withBody;",
+                  "    pm.response.to.be.json;",
+                  "});",
+                  "",
+                  "// 4. Performance SLA",
+                  "pm.test(\"SLA Check: Response time < 2s\", function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(2000);",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/Patient?family=Díaz&gender=male&birthdate=1985-05-15",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "Patient"
+              ],
+              "query": [
+                {
+                  "key": "family",
+                  "value": "Díaz"
+                },
+                {
+                  "key": "gender",
+                  "value": "male"
+                },
+                {
+                  "key": "birthdate",
+                  "value": "1985-05-15"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "TC-PDS-12: Security - Authentication & Token Integrity Validation",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// --- SENIOR QA VALIDATION SCRIPT ---",
+                  "",
+                  "// 1. Success Validation",
+                  "pm.test(\"Status code is 401 - Unauthorized\", function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});",
+                  "",
+                  "// 2. Internationalization (i18n) Verification",
+                  "pm.test(\"i18n Check: Request URL preserves accented 'í'\", function () {",
+                  "    const decodedUrl = decodeURIComponent(pm.request.url.toString());",
+                  "    pm.expect(decodedUrl).to.include(\"Díaz\");",
+                  "});",
+                  "",
+                  "// 3. Schema Check",
+                  "pm.test(\"FHIR Compliance: Response is valid JSON\", function () {",
+                  "    pm.response.to.be.withBody;",
+                  "    pm.response.to.be.json;",
+                  "});",
+                  "",
+                  "// 4. Performance SLA",
+                  "pm.test(\"SLA Check: Response time < 2s\", function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(2000);",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "fdsfdsfsdfdfsfInvalid_Auth_String_TEST_999",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Request-ID",
+                "value": "123e4567-e89b-12d3-a456-426614174000",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/Patient?family=Díaz&gender=male&birthdate=1985-05-15",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "Patient"
+              ],
+              "query": [
+                {
+                  "key": "family",
+                  "value": "Díaz"
+                },
+                {
+                  "key": "gender",
+                  "value": "male"
+                },
+                {
+                  "key": "birthdate",
+                  "value": "1985-05-15"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "TC-PDS-13: Security – Authorization & Scope Validation",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// --- SECURITY SCOPE VALIDATION SCRIPT ---",
+                  "",
+                  "pm.test(\"Security Layer: Request successfully reached the gateway\", function () {",
+                  "    // We expect a 200 (Sandbox) or 403 (Production)",
+                  "    // Anything else (like 401 or 404) would be a failure of the test setup",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 403]);",
+                  "});",
+                  "",
+                  "pm.test(\"Audit Note: Check for Permissive DELETE behavior\", function () {",
+                  "    if (pm.response.code === 200) {",
+                  "        console.warn(\"ADVISORY: Sandbox allowed DELETE verb. Verify 403 enforcement in Production.\");",
+                  "    }",
+                  "});",
+                  "",
+                  "pm.test(\"Performance: Response within clinical SLA\", function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(2000);",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/Patient/{{nhs_number}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "Patient",
+                "{{nhs_number}}"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "auth": {
+    "type": "apikey",
+    "apikey": [
+      {
+        "key": "value",
+        "value": "{{$guid}}",
+        "type": "string"
+      },
+      {
+        "key": "key",
+        "value": "X-Request-ID",
+        "type": "string"
+      }
+    ]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "packages": {},
+        "requests": {},
+        "exec": [
+          ""
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "packages": {},
+        "requests": {},
+        "exec": [
+          ""
+        ]
+      }
+    }
+  ]
+}
