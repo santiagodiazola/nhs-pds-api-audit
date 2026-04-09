@@ -29,6 +29,11 @@ This audit covered 13 high-priority test cases across 4 Agile sprints. The suite
 - **TC-PDS-11:** i18n Compliance (Search with accented characters like "Díaz").
 - **TC-PDS-12/13:** OAuth2 Scope & Token Integrity Validation.
 
+## 📁 Project Artifacts
+
+* **Documentation:** [Full Master Test Plan & Bug Reports (Notion)](https://www.notion.so/Project-Audit-NHS-Personal-Demographics-Service-PDS-32af1e8fc465809eb8fb0d1e88b0ee85a?source=copy_link)
+* **Project Management:** Managed via Jira (See [Sprint Execution Evidence](/evidence/Jira_Sprint_Board.png))
+
 ## 🚀 How to Run this Suite
 1. **Import** the collection and environment files from the `/postman` folder into Postman.
 2. **Configure** your NHS API Key in the environment variables.
