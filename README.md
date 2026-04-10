@@ -13,6 +13,32 @@ This audit covered 13 high-priority test cases across 4 Agile sprints. The suite
 | **Blocked** | 2 | TC-PDS-05, TC-PDS-06 (Sandbox Limit) |
 | **Pass Rate** | **91%** | (Excluding blocked cases) |
 
+## 🚦 Release Readiness Recommendation
+
+**Summary:** The core demographic search modules are stable; however, a critical blocking issue in the Update module prevents a full production release.
+
+* **Search & Discovery: PROCEED** - 91% stability across core identity retrieval.
+  - Robust i18n support confirmed (successful UTF-8 parsing for accented characters).
+* **Patient Updates: HALT** - **Blocking Issue:** BUG-PDS-001 (500 Internal Server Error).
+  - **Risk:** High risk of server-side instability and potential Denial of Service (DoS) if malformed JSON is processed.
+  - **Requirement:** Remediate validation middleware before deployment to the Production environment.
+ 
+## 🛠️ Local Setup & Environment Variables
+
+To execute this test suite in your own Postman instance, you must import the environment template provided in this repository.
+
+### 🔑 Required Variables
+| Variable | Description | Value |
+| :--- | :--- | :--- |
+| `base_url` | NHS Sandbox Entry Point | `https://sandbox.api.service.nhs.uk` |
+| `nhs_number` | Test Patient Identifier | `9000000009` |
+| `api_key` | Your Sandbox Credentials | `[Your API Key]` |
+
+### 🚀 Instructions
+1. Download the `NHS_Sandbox.template.postman_environment.json` from the `/postman` folder.
+2. Import it into Postman (**File > Import**).
+3. Update the `api_key` variable in the **Current Value** column with your NHS Sandbox key.
+
 ### 🔴 Critical Security Finding: BUG-PDS-001
 - **Vulnerability:** Unhandled 500 Internal Server Error.
 - **Root Cause:** Lack of input sanitization on the PATCH /Patient endpoint during malformed JSON injection.
