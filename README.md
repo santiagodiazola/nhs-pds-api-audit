@@ -47,18 +47,6 @@ This suite utilizes a **Decoupled Architecture** to ensure security, portability
 - **TC-PDS-11:** i18n Compliance (Search with accented characters like "Díaz").
 - **TC-PDS-12/13:** OAuth2 Scope & Token Integrity Validation.
 
-## 🚀 Local Setup & Execution
-1.  **Download** the `NHS_Sandbox.template.postman_environment.json` from the `/postman` folder.
-2.  **Import** into Postman (**File > Import**).
-3.  **Configure:** Update the `api_key` variable in the **Current Value** column with your NHS Sandbox credentials.
-4.  **Activate:** Ensure the "NHS - Sandbox Copy" environment is selected in the top-right dropdown.
-5.  **Run:** Execute the suite using the Postman Collection Runner.
-
-## 📁 Project Artifacts
-
-* **Documentation:** [Full Master Test Plan & Bug Reports (Notion)](https://www.notion.so/Project-Audit-NHS-Personal-Demographics-Service-PDS-32af1e8fc465809eb8f0d1e88b0ee85a)
-* **Project Management:** Managed via Jira (See [Sprint Execution Evidence](/evidence/Jira_Sprint_Board.png))
-
 ## 🚀 How to Run this Suite
 Download: Save both JSON files (the Collection and the Environment) from the /postman folder.
 Import: In Postman, click the Import button and drag both files in.
@@ -68,11 +56,17 @@ The following values are pre-configured for immediate execution:
 base_url: https://sandbox.api.service.nhs.uk/personal-demographics/FHIR/R4
 nhs_number: 9000000009
 api_key: {{$guid}} (Dynamically generates the required unique UUID).
-
 Execute:
 Open the Collection Runner (bottom right of the Postman window).
 Select the NHS PDS Audit collection.
 Click Run NHS PDS Audit.
+
+## 📁 Project Artifacts
+
+* **Documentation:** [Full Master Test Plan & Bug Reports (Notion)](https://www.notion.so/Project-Audit-NHS-Personal-Demographics-Service-PDS-32af1e8fc465809eb8f0d1e88b0ee85a)
+* **Project Management:** Managed via Jira (See [Sprint Execution Evidence](/evidence/Jira_Sprint_Board.png))
+
+
 
 ---
 > **QA Lead Note:** This audit focuses on **Systemic Resilience**. Beyond functional verification, it validates how the API behaves under non-standard conditions to protect clinical data integrity.
