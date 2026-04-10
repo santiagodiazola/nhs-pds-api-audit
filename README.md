@@ -1,4 +1,5 @@
 # NHS PDS API - Technical Audit & Automation
+![NHS API Audit Showcase](./evidence/BUG-001.gif)
 > **Project Goal:** To validate the resilience, security, and data integrity of the National Health Service (NHS) Patient Demographic Service.
 
 ## 📊 Executive Summary
