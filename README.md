@@ -1,7 +1,8 @@
 # NHS PDS API - Technical Audit & Automation
+
 > **Project Goal:** To validate the resilience, security, and data integrity of the National Health Service (NHS) Patient Demographic Service.
+
 ![NHS API Audit Showcase](./evidence/BUG-001.gif)
-> **Project Goal:** To validate the resilience, security, and data integrity of the National Health Service (NHS) Patient Demographic Service.
 
 ## 📊 Executive Summary
 This comprehensive audit evaluated the UK’s "Golden Record" system for patient data. The suite validates HL7 FHIR R4 compliance and security authorization scopes across 13 high-priority scenarios.
