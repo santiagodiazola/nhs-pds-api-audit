@@ -4,7 +4,7 @@
 
 ![NHS API Audit Showcase](./evidence/BUG-001.gif)
 
-## 📊 Executive Summary
+## 📑 Executive Summary
 This comprehensive audit evaluated the UK’s "Golden Record" system for patient data. The suite validates HL7 FHIR R4 compliance and security authorization scopes across 13 high-priority scenarios.
 
 ---
@@ -54,6 +54,17 @@ This suite utilizes a **Decoupled Architecture** to ensure security, portability
 - **Automation:** Postman + JavaScript (pm.test assertions).
 - **Execution:** 13 Automated Test Cases (91% Pass Rate).
 - **Tooling:** Jira for bug tracking, Notion for the Master Test Plan.
+
+---
+
+## 🔎 Exploratory Testing
+
+Beyond defined test cases, I tested how the API behaves under unexpected inputs such as:
+- malformed JSON
+- missing fields
+- invalid query combinations
+
+This helped identify hidden issues not covered by standard test scenarios.
 
 ---
 
